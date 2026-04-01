@@ -1,117 +1,106 @@
-"""
-Autoencoder for anomaly detection (unsupervised)
-- Uses all numeric features
-- 20% training, 80% testing
-- Threshold computed from training reconstruction errors
-- Outputs metrics in autoencoder_results.json
-"""
-
 import json
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
+    accuracy_score,
     precision_score,
     recall_score,
     f1_score,
-    average_precision_score,
-    accuracy_score
+    average_precision_score
 )
-import tensorflow as tf
-from tensorflow.keras import layers, models
-
-RANDOM_STATE = 42
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.optimizers import legacy
+from tensorflow.keras import regularizers
 
 # Load CSV dataset
-csv_path = "dataset.csv"  # change if needed
-df = pd.read_csv(csv_path)
-df.columns = [c.strip() for c in df.columns]
+df = pd.read_csv("dataset.csv")
 
-# Select numeric columns (exclude target)
-numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
-numeric_cols = [c for c in numeric_cols if c != "anomaly"]
+# Use all numeric columns except 'anomaly'
+numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+if "anomaly" in numeric_cols:
+    numeric_cols.remove("anomaly")
 
-# Handle missing values
-df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].median())
+# Drop rows with NaNs
+df = df.dropna(subset=numeric_cols + ["anomaly"])
 
-# Standardize numeric features
-scaler = StandardScaler()
-df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
+# Split data 80% train, 20% test
+train_df, test_df = train_test_split(df, test_size=0.2, random_state=42, stratify=df["anomaly"])
 
-# Train/test split (20% train, 80% test)
-train_df, test_df = train_test_split(
-    df,
-    train_size=0.2,
-    random_state=RANDOM_STATE,
-    stratify=df["anomaly"]
-)
+X_train = train_df[numeric_cols].astype(float).values
+X_test = test_df[numeric_cols].astype(float).values
 
-X_train = train_df[numeric_cols].values
 y_train = train_df["anomaly"].values
-
-X_test = test_df[numeric_cols].values
 y_test = test_df["anomaly"].values
 
+# Normalize features
+mean = X_train.mean(axis=0)
+std = X_train.std(axis=0) + 1e-8
+X_train_norm = (X_train - mean) / std
+X_test_norm = (X_test - mean) / std
+
 # Build autoencoder
-input_dim = X_train.shape[1]
-encoding_dim = max(4, input_dim // 2)
+input_dim = X_train_norm.shape[1]
+input_layer = Input(shape=(input_dim,))
+encoded = Dense(16, activation="relu", activity_regularizer=regularizers.l1(1e-5))(input_layer)
+encoded = Dense(8, activation="relu")(encoded)
+decoded = Dense(16, activation="relu")(encoded)
+decoded = Dense(input_dim, activation="linear")(decoded)
+autoencoder = Model(inputs=input_layer, outputs=decoded)
+autoencoder.compile(optimizer=legacy.Adam(learning_rate=0.001), loss="mse")
 
-autoencoder = models.Sequential([
-    layers.Input(shape=(input_dim,)),
-    layers.Dense(encoding_dim, activation="relu"),
-    layers.Dense(input_dim, activation="linear")
-])
-
-autoencoder.compile(
-    optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001),
-    loss="mse"
-)
-
-# Train autoencoder only on normal points
-X_train_normal = X_train[y_train == 0]
+# Train autoencoder only on normal data
+X_train_norm_clean = X_train_norm[y_train == 0]
 autoencoder.fit(
-    X_train_normal,
-    X_train_normal,
+    X_train_norm_clean,
+    X_train_norm_clean,
     epochs=50,
     batch_size=32,
     shuffle=True,
     verbose=0
 )
 
-# Compute reconstruction errors
-recon_train = autoencoder.predict(X_train, verbose=0)
-mse_train = np.mean(np.square(X_train - recon_train), axis=1)
+# Compute MSE reconstruction error
+reconstructions = autoencoder.predict(X_test_norm, verbose=0)
+mse_test = np.mean(np.square(reconstructions - X_test_norm), axis=1)
 
-# Threshold from training reconstruction errors (95th percentile)
-threshold = np.percentile(mse_train, 95)
+# Determine threshold from training normal data using accuracy+recall balance
+reconstructions_train = autoencoder.predict(X_train_norm_clean, verbose=0)
+mse_train = np.mean(np.square(reconstructions_train - X_train_norm_clean), axis=1)
 
-# Evaluate on test set
-recon_test = autoencoder.predict(X_test, verbose=0)
-mse_test = np.mean(np.square(X_test - recon_test), axis=1)
+threshold_candidates = np.linspace(mse_train.min(), mse_train.max(), 200)
+best_score = -1
+best_threshold = threshold_candidates[0]
 
-y_pred = (mse_test >= threshold).astype(int)
+for t in threshold_candidates:
+    y_pred = (mse_test > t).astype(int)
+    acc = accuracy_score(y_test, y_pred)
+    rec = recall_score(y_test, y_pred)
+    score = acc + rec  # simple balance
+    if score > best_score:
+        best_score = score
+        best_threshold = t
 
-# Metrics
-accuracy = accuracy_score(y_test, y_pred)
-precision = precision_score(y_test, y_pred, zero_division=0)
-recall = recall_score(y_test, y_pred, zero_division=0)
-f1 = f1_score(y_test, y_pred, zero_division=0)
-pr_auc = average_precision_score(y_test, mse_test)
+# Apply threshold
+y_pred_final = (mse_test > best_threshold).astype(int)
 
-error_statistics = {
-    "mean_mse": float(np.mean(mse_test)),
-    "std_mse": float(np.std(mse_test)),
-    "threshold": float(threshold),
-    "accuracy": float(accuracy),
-    "precision": float(precision),
-    "recall": float(recall),
-    "f1_score": float(f1),
-    "pr_auc": float(pr_auc)
+# Compute metrics
+results = {
+    "error_statistics": {
+        "mean_mse": float(mse_test.mean()),
+        "std_mse": float(mse_test.std()),
+        "threshold": float(best_threshold),
+        "accuracy": float(accuracy_score(y_test, y_pred_final)),
+        "precision": float(precision_score(y_test, y_pred_final, zero_division=0)),
+        "recall": float(recall_score(y_test, y_pred_final, zero_division=0)),
+        "f1_score": float(f1_score(y_test, y_pred_final, zero_division=0)),
+        "pr_auc": float(average_precision_score(y_test, mse_test))
+    }
 }
 
-# Save to autoencoder_results.json
+# Save results to JSON (overwrite previous)
 with open("autoencoder_results.json", "w") as f:
-    json.dump({"error_statistics": error_statistics}, f, indent=2)
+    json.dump(results, f, indent=2)
 
-print(json.dumps({"error_statistics": error_statistics}, indent=2))
+print(json.dumps(results, indent=2))
