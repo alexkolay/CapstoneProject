@@ -1,0 +1,86 @@
+{
+  "combined_threshold": 0.628674341497107,
+  "feature_count": 25,
+  "flagged_count": 80,
+  "flagged_rate": 0.04032258064516129,
+  "reconstruction_rmse": 5.007670492561827,
+  "test_rows": 1984,
+  "top_flagged": [
+    {
+      "NORAD_CAT_ID": "67116",
+      "OBJECT_NAME": "STARLINK-35738",
+      "combined_score": 0.8367874899103536
+    },
+    {
+      "NORAD_CAT_ID": "68028",
+      "OBJECT_NAME": "STARLINK-36253",
+      "combined_score": 0.7684142077825449
+    },
+    {
+      "NORAD_CAT_ID": "67123",
+      "OBJECT_NAME": "STARLINK-36151",
+      "combined_score": 0.7167787975964509
+    },
+    {
+      "NORAD_CAT_ID": "68035",
+      "OBJECT_NAME": "STARLINK-36943",
+      "combined_score": 0.6993659902911948
+    },
+    {
+      "NORAD_CAT_ID": "68027",
+      "OBJECT_NAME": "STARLINK-36940",
+      "combined_score": 0.6937505910034112
+    },
+    {
+      "NORAD_CAT_ID": "68032",
+      "OBJECT_NAME": "STARLINK-36935",
+      "combined_score": 0.688182557847889
+    },
+    {
+      "NORAD_CAT_ID": "68037",
+      "OBJECT_NAME": "STARLINK-36388",
+      "combined_score": 0.6854712206467444
+    },
+    {
+      "NORAD_CAT_ID": "67672",
+      "OBJECT_NAME": "STARLINK-36616",
+      "combined_score": 0.6841335362094274
+    },
+    {
+      "NORAD_CAT_ID": "67591",
+      "OBJECT_NAME": "STARLINK-36391",
+      "combined_score": 0.6832606424757449
+    },
+    {
+      "NORAD_CAT_ID": "67669",
+      "OBJECT_NAME": "STARLINK-36639",
+      "combined_score": 0.6800591528305786
+    },
+    {
+      "NORAD_CAT_ID": "68034",
+      "OBJECT_NAME": "STARLINK-36939",
+      "combined_score": 0.6774838203267962
+    },
+    {
+      "NORAD_CAT_ID": "67671",
+      "OBJECT_NAME": "STARLINK-36297",
+      "combined_score": 0.6772519601265485
+    },
+    {
+      "NORAD_CAT_ID": "67605",
+      "OBJECT_NAME": "STARLINK-36281",
+      "combined_score": 0.6729050253040696
+    },
+    {
+      "NORAD_CAT_ID": "67744",
+      "OBJECT_NAME": "STARLINK-36692",
+      "combined_score": 0.672572187806119
+    },
+    {
+      "NORAD_CAT_ID": "67608",
+      "OBJECT_NAME": "STARLINK-36411",
+      "combined_score": 0.6714083078943838
+    }
+  ],
+  "train_rows": 7935
+}
