@@ -11,8 +11,7 @@ The project works with two fairly different datasets, so there are two separate 
 ## Data
 
 - `OPTSAT_dataset.csv` — labeled optical satellite telemetry (OPTSAT-AD), used for supervised anomaly detection.
-- `spacetrack_data.csv` / `spacetrack_starlink.json` — orbital element (TLE/GP) data pulled from Space-Track for active satellites.
-- `celestrak_starlink.csv` / `celestrak starlink.json` — supplementary Starlink data from Celestrak.
+- `spacetrack_data.csv` / `spacetrack_starlink.json` — orbital element (TLE/GP) data pulled from Space-Track for active satellites. This is the primary orbital dataset used in the pipeline.
 - `fetch_constellations.py` — pulls active satellite GP data from the Space-Track API for several constellations (Starlink, OneWeb, Iridium, Planet, etc.). Requires a free Space-Track account.
 
 ## Pipelines
